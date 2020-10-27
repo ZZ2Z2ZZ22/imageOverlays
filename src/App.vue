@@ -1,32 +1,61 @@
 <template>
   <div id="app">
-    <div id="nav">
-      <router-link to="/">Home</router-link> |
-      <router-link to="/about">About</router-link>
-    </div>
-    <router-view/>
+    <el-container>
+      <el-header>图片标注平台
+        <el-button type="primary" icon="el-icon-s-custom"></el-button>
+      </el-header>
+      <el-main>
+        <router-view></router-view>
+      </el-main>
+    </el-container>
   </div>
 </template>
 
-<style lang="scss">
-#app {
-  font-family: Avenir, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-align: center;
-  color: #2c3e50;
+<script>
+export default {
+  name: 'App',
+  components: {
+  }
+}
+</script>
+
+<style lang="scss" scoped>
+/deep/ .el-container{
+  height:100vh;
+}
+.el-button{
+  float:right;
+
+}
+/deep/ .el-button--primary{
+  color:black;
+  border-color:transparent;
+  font-size:4.0vh;
+  background-color: #B3C0D1;
+  line-height:35px;
+}
+/deep/ .el-header, .el-footer {
+  background-color: #B3C0D1;
+  color: #333;
+  text-align: left;
+  line-height: 60px;
+  font-size:30px;
+  height: auto;
 }
 
-#nav {
-  padding: 30px;
+/deep/ .el-main {
+  background-color: #E9EEF3;
+  color: #333;
+  text-align: center;
+  height: inherit;
+  display:flex;
+  justify-content: center;
+  align-items:center;
+  padding:0;
+  margin:0;
+}
 
-  a {
-    font-weight: bold;
-    color: #2c3e50;
-
-    &.router-link-exact-active {
-      color: #42b983;
-    }
-  }
+/deep/ body > .el-container {
+  margin-bottom: 100px;
 }
 </style>

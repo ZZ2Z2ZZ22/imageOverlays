@@ -5,6 +5,9 @@ import Home from '../views/Home.vue'
 import User from '../views/User.vue'
 import Register from '../views/Register.vue'
 
+// test
+import MarkImage from '../views/Home/MarkImage.vue'
+
 Vue.use(VueRouter)
 
 const routes = [
@@ -36,6 +39,11 @@ const routes = [
     name: 'Home',
     component: Home
   },
+
+  {
+    path: '/test',
+    component: MarkImage
+  }
 ]
 
 const router = new VueRouter({

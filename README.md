@@ -1,4 +1,4 @@
-# vuedemo2
+# imageOverlays
 
 ## Project setup
 ```

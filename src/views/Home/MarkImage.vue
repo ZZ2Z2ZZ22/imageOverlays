@@ -1,6 +1,7 @@
 <template>
     <el-container>
         <el-main>
+            <!-- <img src="../../../static/img/test01.jpeg"> 测试图片路径是否正确 -->
             <el-button id="drawRect" class="command-btn" @click="setMode('drawRect')">编辑矩形边框</el-button>
             <el-button id="pan" class="command-btn" @click="setMode('pan')">平移模式</el-button>
             <div id="map"></div>
@@ -86,12 +87,14 @@
 
 <script>
 import AILabel from 'ailabel'
+
 // 数据对象
 var data = function() {
     return {
         imgWidth: 4256,
         imgHeight: 2832,
-        imgSrc: "../../../static/img/test01.jpeg",
+        imgSrc: require("../../../static/img/test01.jpeg"),
+        // imgSrc: './test02.jpeg',
         gMap: "",
         editingBoxData: [{
             id: "3",
@@ -204,7 +207,8 @@ export default {
         this.imgWidth = 4256;
         this.imgHeight = 2832;
         let gFeatureStyle = {};
-        // this.imgSrc = '../../assets/test01.jpeg'; //图片路径，应该从父组件中获得
+        // this.imgSrc = '../../../static/img/test01.jpeg'; //图片路径，应该从父组件中获得
+        // this.imgSrc = './test02.jpeg'
 
         // 容器对象声明
         // cx, cy：初始中心点坐标
@@ -229,7 +233,13 @@ export default {
         let gImageLayer = new AILabel.Layer.Image('img', this.imgSrc, 
             {w: this.imgWidth, h: this.imgHeight},
             {zIndex: 1})
-        this.gMap.addLayer(gImageLayer);
+        // let gImageLayer = new AILabel.Layer.Image('img', require("./test02.jpeg"), 
+        //     {w: this.imgWidth, h: this.imgHeight},
+        //     {zIndex: 1});
+        // gImageLayer.renew();
+        gMapObj.addLayer(gImageLayer);
+        console.log("gimagelayer", gImageLayer);
+        // this.gMap.addLayer(gImageLayer);
 
         // 缩略图
         const eagleControl = new AILabel.Control.EagleMap(

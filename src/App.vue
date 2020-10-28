@@ -2,7 +2,7 @@
   <div id="app">
     <el-container>
       <el-header>图片标注平台
-        <el-button type="primary" icon="el-icon-s-custom"></el-button>
+        <el-button type="primary" icon="el-icon-s-custom" class="person"></el-button>
       </el-header>
       <el-main>
         <router-view></router-view>
@@ -23,17 +23,7 @@ export default {
 /deep/ .el-container{
   height:100vh;
 }
-.el-button{
-  float:right;
 
-}
-/deep/ .el-button--primary{
-  color:black;
-  border-color:transparent;
-  font-size:4.0vh;
-  background-color: #B3C0D1;
-  line-height:35px;
-}
 /deep/ .el-header, .el-footer {
   background-color: #B3C0D1;
   color: #333;
@@ -57,5 +47,13 @@ export default {
 
 /deep/ body > .el-container {
   margin-bottom: 100px;
+}
+.person{
+  float: right;
+  color:black;
+  border-color:transparent;
+  font-size:4.0vh;
+  background-color: #B3C0D1;
+  line-height:35px;
 }
 </style>

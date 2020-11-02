@@ -20,14 +20,14 @@
       <div class="boxType">
         <span>标注边框形状</span>
         <div class="type">
-          <el-button class="typeButton" v-for="type in types" :key="type.name" @click="chooseType(type.name)">
+          <el-button class="typeButton" v-for="type in types" :key="type.name" @click="chooseType(type.value)">
             {{type.name}}
           </el-button>
         </div>
       </div>
     </div>
     <div class="middle">
-     <MarkImage :img-src="picSrc" :mode="mode"></MarkImage>
+     <MarkImage :img="picSrc.src" :mode="mode"></MarkImage>
     </div>
   </div>
 </template>
@@ -43,14 +43,14 @@ export default {
   data() {
     return {
       types:[
-        {name:'drawRect'},
-        {name:'圆形'},
-        {name:'椭圆'},
-        {name:'菱形'},
+        {name:'矩形', value: "drawRect"},
+        {name:'圆形', value: ""},
+        {name:'椭圆', value: ""},
+        {name:'菱形', value: ""},
       ],
       mode:'',
       picSrc: {name:'',src:''},
-      picVisible: false,
+      picVisible: false
     };
   },
   methods: {
@@ -67,7 +67,6 @@ export default {
     // 导入图片后 Base64编码图片
     handlePreview(file) {
       if(this.beforeUpload(file)){
-        console.log(file);
         const reader = new FileReader();
         reader.readAsDataURL(file.raw);
         let that=this;
@@ -75,12 +74,6 @@ export default {
           that.picVisible=true;
           that.picSrc.src=reader.result;
           that.picSrc.name=file.name;
-          let img = new Image();
-          img.src = String(that.picSrc.src);
-          img.onload=function(){
-            console.log("height"+img.height);
-            console.log("width"+img.width);
-          }
        }
       }
 
@@ -151,7 +144,7 @@ export default {
 }
 .type .typeButton{
   float:left;
-  display:inline-block;
+  /* display:inline-block; */
   margin:1vh 1vw;
 }
 </style>

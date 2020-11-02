@@ -1,12 +1,9 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import Login from '../views/Login.vue'
-import Home from '../views/Home.vue'
+import Home from '../views/Home/index.vue'
 import User from '../views/User.vue'
 import Register from '../views/Register.vue'
-
-// test
-import MarkImage from '../views/Home/index.vue'
 
 Vue.use(VueRouter)
 
@@ -39,11 +36,6 @@ const routes = [
     name: 'Home',
     component: Home
   },
-
-  {
-    path: '/test',
-    component: MarkImage
-  }
 ]
 
 const router = new VueRouter({

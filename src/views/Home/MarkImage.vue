@@ -1,12 +1,10 @@
 <template>
     <el-container>
-        <el-main>
-            <el-button id="drawRect" class="command-btn" @click="setMode('drawRect')">编辑矩形边框</el-button>
-            <!-- <el-button id="pan" class="command-btn" @click="setMode('pan')">平移模式</el-button> -->
+        <el-main style="align-items: flex-start">
             <div id="map"></div>
         </el-main>
-        <el-aside width="420px" style="margin-top: 20px">
-            <el-card shadow="always" id="editBoxData" style="width: 400px; margin-top: 25px;">
+        <el-aside width="420px" style="margin-top: 0px">
+            <el-card shadow="always" id="editBoxData" style="width: 400px; margin-top: 0px;">
                 <div slot="header">
                     <span>当前边框</span>
                 </div>
@@ -108,11 +106,10 @@ var props = {
         type: String,
         default: "drawRect"
     },
-    //父组件只需要提供图片名称，图片必须放在static/img中，不然无法使用require动态加载
-    // fixme: 改为父组件传递base64格式的图片数据
+    // 父组件传递base64格式的图片数据
     img: {
         type: String,
-        default: "test01.jpeg"
+        default: ""
     }
 }
 // 数据对象
@@ -121,7 +118,7 @@ var data = function() {
         idCount: 0, // 边框序号，每新加载一张图片，都要置0
         imgWidth: 0,
         imgHeight: 0,
-        imgSrc: require("../../../static/img/" + this.img),
+        // imgSrc: this.img,
         gMap: "",
         isSelected: "", // 是否有标注边框被选中，控制编辑模式
         // 当前边框数据
@@ -170,11 +167,11 @@ var methods = {
         if (mode === "drawRect"){
             gFeatureStyle = new AILabel.Style({strokeColor: '#0000FF', lineWeight: 2});
         }
-        let btnNodes = document.getElementsByClassName('command-btn');
-        for (let i = 0; i < btnNodes.length; i++){
-            btnNodes[i].style.backgroundColor = "#FFF";
-        }
-        document.getElementById(mode).style.backgroundColor = "#3377ff";
+        // let btnNodes = document.getElementsByClassName('command-btn');
+        // for (let i = 0; i < btnNodes.length; i++){
+        //     btnNodes[i].style.backgroundColor = "#FFF";
+        // }
+        // document.getElementById(mode).style.backgroundColor = "#3377ff";
 
         this.gMap && this.gMap.setMode(mode, gFeatureStyle);
     },
@@ -280,6 +277,10 @@ var methods = {
         let that = this;
         let cFeature = feature;
         const feaId = cFeature.id;
+        
+        const marker = this.gMap.mLayer.getMarkerById(`marker-${feaId}`);
+        if (marker) return; //有删除按钮存在就返回
+
         const featureBounds = cFeature.getBounds();
         const leftTopPoint = featureBounds[0]; // 边界坐上角坐标
         let deleteMarker = new AILabel.Marker(`marker-${feaId}`,
@@ -321,8 +322,10 @@ var methods = {
             let feaLayer = this.getFeatureLayer();
             if (pre){
                 let preFea = feaLayer.getFeatureById(pre.featureId);
-                this.removeDeleteMarker(preFea.id);
-                preFea.deActive();
+                this.removeDeleteMarker(pre.featureId);
+                if (preFea){
+                    preFea.deActive();
+                }
             }
             this.currentBndBox = val;
             this.$refs.nonMarkBoxTable.setCurrentRow(val);
@@ -340,9 +343,12 @@ var methods = {
             let feaLayer = this.getFeatureLayer();
             if (pre){
                 let preFea = feaLayer.getFeatureById(pre.featureId);
+                this.removeDeleteMarker(pre.featureId);
                 // console.log("pre", pre);
-                this.removeDeleteMarker(preFea.id);
-                preFea.deActive();
+                if (preFea){
+                    // this.removeDeleteMarker(preFea.id);
+                    preFea.deActive();
+                }
             }
 
             this.currentBndBox = val;
@@ -400,7 +406,7 @@ var methods = {
         if (index === -1) return;
 
         // 删除按钮添加
-        this.addDeleteMarker(cFeature);
+        // this.addDeleteMarker(cFeature);
     },
 
     // 编辑模式中
@@ -409,6 +415,7 @@ var methods = {
         // 得到选定的边框id
         const index = this.findFeatureNonMark(feature.id);
         if (index === -1) return;
+
         const marker = this.gMap.mLayer.getMarkerById(`marker-${feature.id}`);
         if (!marker) return; //不存在就返回
         
@@ -417,7 +424,6 @@ var methods = {
         marker.update({x: leftTopPoint.x, y: leftTopPoint.y});
 
         // 在这里实时变更编辑框中的数据
-        if (index === -1) return;
         this.calculateExistRange(index, points);
     },
 
@@ -468,7 +474,6 @@ var methods = {
 
     // 响应表格行：选中当前行， 并且高亮
     handleCurrentChange(val) {
-        // console.log("val", val);
         let index_1 = -1;
         let index_2 = -1;
         index_1 = this.findFeatureNonMark(val);
@@ -537,6 +542,16 @@ var methods = {
         }
     },
 
+    handleClearSubmitData: function(){
+        if (!this.bndBoxData.length) return;
+
+        let len = this.bndBoxData.length;
+        while (len--){
+            let temp = this.bndBoxData.pop();
+            this.handleDeleteFeature(temp.featureId);
+        }
+    },
+
     // 向后端提交图片属性和边框属性数据
     handleSubmit: function(){
         if (!this.bndBoxData.length) {
@@ -557,12 +572,13 @@ var methods = {
             cancelButtonText: '取消',
             type: 'warning'
         }).then(() => {
-            axios.post(url, JSON.stringify(postData));
+            // axios.post(url, JSON.stringify(postData));
             this.$message({
                 type: 'success',
                 message: '提交成功!'
             });
-            this.bndBoxData.splice(0); //清空已提交数据
+            // this.bndBoxData.splice(0); //清空已提交数据
+            this.handleClearSubmitData();
         }).catch(() => {
           this.$message({
             type: 'info',
@@ -576,97 +592,114 @@ export default {
     data: data,
     props: props,
     methods: methods,
-    computed: {},
-    mounted() {
-        /**
-         * 参数：
-         * 1. 图片宽高
-         * 2. 边框样式
-         */
-        // fixme：组件封装之后imgWidth和height应该随imgsrc的变化而变化
-        // let image = new Image();
-        // const imgData = 'data:image/png;base64,........';
-        // image.src = imgData;
-        // image.onload = function(){
-        //     this.imgWidth = image.width;
-        //     this.imgHeight = image.height;
-        // }
-        this.imgWidth = 4256;
-        this.imgHeight = 2832;
-        let gFeatureStyle = {};
-        var that = this;
+    watch: {
+        img: function(){
+            var that = this;
 
-        /**
-         * 容器对象（gMap）声明：
-         * cx, cy：初始中心点坐标
-         * autoPan: 绘制过程中是否允许自动平移
-         * autoZoom：绘制过程中是否允许自动滚轮缩放
-         * 
-         * 1. 图片层：放置图片 gImageLayer
-         * 2. 矢量层：放置标注的边框 gFeatureLayer
-         */
+            function loadImg(src){
+                return new Promise((resolve,reject)=>{
+                    let img = new Image();
+                    img.src = src;
+                    img.onload = () => {
+                        resolve(img);
+                    }
+                    img.onerror=(err)=>{
+                        reject(err)
+                    }
+                })
+            }
 
-        let gMapObj = new AILabel.Map('map', {
-            zoom: this.imgWidth, 
-            cx: 0, cy: 0, 
-            zoomMax: this.imgWidth, zoomMin: this.imgWidth, 
-            autoPan: true, drawZoom: true
-        });
-        this.gMap = gMapObj;
-        
-        // 图片层实例添加
-        let gImageLayer = new AILabel.Layer.Image('img', this.imgSrc, 
-            {w: this.imgWidth, h: this.imgHeight},
-            {zIndex: 1});
-        this.gMap.addLayer(gImageLayer);
+            loadImg(this.img).then(img => {
+                this.idCount = 0;
+                this.imgWidth = img.width;
+                this.imgHeight = img.height;
+                let gFeatureStyle = {};
 
-        // 矢量层实例添加
-        let gFeatureLayer = new AILabel.Layer.Feature('featureLayer', {zIndex: 2, transparent: true});
-        this.gMap.addLayer(gFeatureLayer);
+                /**
+                 * 容器对象（gMap）声明：
+                 * cx, cy：初始中心点坐标
+                 * autoPan: 绘制过程中是否允许自动平移
+                 * autoZoom：绘制过程中是否允许自动滚轮缩放
+                 * 
+                 * 1. 图片层：放置图片 gImageLayer
+                 * 2. 矢量层：放置标注的边框 gFeatureLayer
+                 */
+                let gMapObj = new AILabel.Map('map', {
+                    zoom: this.imgWidth, 
+                    cx: 0, cy: 0, 
+                    zoomMax: this.imgWidth, zoomMin: this.imgWidth, 
+                    autoPan: true, drawZoom: true
+                });
 
-        // 自动进入禁止平移缩放模式
-        this.gMap.setMode("banMap");
+                // 图片层实例添加
+                let gImageLayer = new AILabel.Layer.Image('img', this.img, 
+                    {w: this.imgWidth, h: this.imgHeight},
+                    {zIndex: 1});
+                gMapObj.addLayer(gImageLayer);
 
-        /**
-         * 以下是对矩形边框绘制的监听
-         * 1. 边框绘制完成 geometryDrawDone
-         * 2. 编辑模式开始：双击选中边框进入编辑模式 featureSelected
-         * 3. 编辑模式中：边框编辑过程中（即改变边框的大小过程中）geometryEditing
-         * 4. 编辑模式结束：编辑边框完成 geometryEditDone
-         */ 
+                // 矢量层实例添加
+                let gFeatureLayer = new AILabel.Layer.Feature('featureLayer', {zIndex: 2, transparent: true});
+                gMapObj.addLayer(gFeatureLayer);
 
-        // 添加边框：矩形边框绘制完成
-        this.gMap.events.on('geometryDrawDone', function (type, points) {
-            that.drawRectBox(type, points, gFeatureStyle);
-        });
+                // 自动进入禁止平移缩放模式
+                gMapObj.setMode("banMap");
+                // 添加边框：矩形边框绘制完成
+                gMapObj.events.on('geometryDrawDone', function (type, points) {
+                    that.drawRectBox(type, points, gFeatureStyle);
+                });
 
-        // 编辑模式开始：双击选中编辑矩形框，进入编辑模式
-        this.gMap.events.on('featureSelected', function(feature){
-            console.log("start edit");
-            that.enterEditMode(feature);
-        });
+                /**
+                 * 以下是对矩形边框绘制的监听
+                 * 1. 边框绘制完成 geometryDrawDone
+                 * 2. 编辑模式开始：双击选中边框进入编辑模式 featureSelected
+                 * 3. 编辑模式中：边框编辑过程中（即改变边框的大小过程中）geometryEditing
+                 * 4. 编辑模式结束：编辑边框完成 geometryEditDone
+                 */ 
 
-        // 编辑模式中：实时变更最右方编辑框中的坐标数据
-        this.gMap.events.on('geometryEditing', this.throttle(function (type, feature, points) {
-            console.log("editing");
-            that.updateEditMode(type, feature, points);
-        }, 200));
+                // 编辑模式开始：双击选中编辑矩形框，进入编辑模式
+                gMapObj.events.on('featureSelected', function(feature){
+                    that.enterEditMode(feature);
+                });
 
-        // 编辑模式结束：进入编辑模式之后，编辑边框完成
-        this.gMap.events.on('geometryEditDone', function (type, activeFeature, points) {
-            console.log("end edit");
-            that.endEditMode(type, activeFeature, points);
-        });
+                // 编辑模式中：实时变更最右方编辑框中的坐标数据
+                gMapObj.events.on('geometryEditing', this.throttle(function (type, feature, points) {
+                    that.updateEditMode(type, feature, points);
+                }, 100));
 
-        // feature-reset监听
-        this.gMap.events.on('featureStatusReset', function () {
-            that.gMap.mLayer.removeAllMarkers();
-        });
+                // 编辑模式结束：进入编辑模式之后，编辑边框完成
+                gMapObj.events.on('geometryEditDone', function (type, activeFeature, points) {
+                    that.endEditMode(type, activeFeature, points);
+                });
 
-        // 窗口缩放监听：
-        window.onresize = function () {
-            this.gMap && this.gMap.resize();
+                // feature-reset监听
+                gMapObj.events.on('featureStatusReset', function () {
+                    that.gMap.mLayer.removeAllMarkers();
+                });
+
+                // 窗口缩放监听：
+                window.onresize = function () {
+                    gMapObj && gMapObj.resize();
+                }
+                this.gMap = gMapObj;
+                if (this.mode) this.setMode(this.mode);
+            }).catch(err => {
+                console.error(err);
+            })            
+        },
+        mode: function(){
+            if (this.mode) this.setMode(this.mode);
         }
+    },
+    computed: {
+        imgWidthtest: function(){
+            return this.imgWidth;
+        },
+        imgHeighttest: function(){
+            return this.imgHeight;
+        }
+    },
+    mounted() {
+        this.gMap = "";
     }
 }
 </script>
@@ -685,12 +718,12 @@ export default {
     -khtml-user-select:none;/*早期浏览器*/
     user-select:none;
 }
-.command-btn {
+/* .command-btn {
     display: inline-block;
     margin: 0 20px;
     margin-top: 10px;
     font-size: 15px;
     padding: 5px 10px;
     border: 1px solid #aaa;
-}
+} */
 </style>

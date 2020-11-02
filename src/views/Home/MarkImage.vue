@@ -14,11 +14,6 @@
                 highlight-current-row
                 @current-change="handleCurrentChange" 
                 style="width: 100%">
-                <!-- 多行选择，待实现 -->
-                    <!-- <el-table-column
-                    type="selection"
-                    width="55">
-                    </el-table-column> -->
                     <el-table-column
                         prop="id"
                         label="序号"
@@ -181,12 +176,6 @@ var methods = {
         if (mode === "drawRect"){
             gFeatureStyle = new AILabel.Style({strokeColor: '#0000FF', lineWeight: 2});
         }
-        // let btnNodes = document.getElementsByClassName('command-btn');
-        // for (let i = 0; i < btnNodes.length; i++){
-        //     btnNodes[i].style.backgroundColor = "#FFF";
-        // }
-        // document.getElementById(mode).style.backgroundColor = "#3377ff";
-
         this.gMap && this.gMap.setMode(mode, gFeatureStyle);
     },
 
@@ -577,19 +566,6 @@ var methods = {
         }
 
         const url = "";
-        /**
-         * data ={
-            Folder: “”,
-            filename: “”,
-            Path: “”,
-            Source:{ database: “” },
-            Size{
-                width: “”,
-                height: “”
-            },
-            Segmented: “”
-}
-         */
         const postData = {
             folder: "",
             filename: "",
@@ -756,12 +732,4 @@ export default {
     -khtml-user-select:none;/*早期浏览器*/
     user-select:none;
 }
-/* .command-btn {
-    display: inline-block;
-    margin: 0 20px;
-    margin-top: 10px;
-    font-size: 15px;
-    padding: 5px 10px;
-    border: 1px solid #aaa;
-} */
 </style>

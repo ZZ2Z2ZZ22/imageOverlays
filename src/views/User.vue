@@ -17,11 +17,10 @@ name: "User"
 <style scoped>
 .user{
   font-family: "Arial";
-  width:50vh;
+  width:25vw;
   border-radius: 4px;
-  margin:2vh 2vh;
   box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);
-  height:50vh;
+  height:38vh;
 }
 .panel{
   width:100%;
@@ -33,11 +32,11 @@ name: "User"
   text-decoration: none;
 }
 .menu{
-  display: inline-block;
+  display:inline-block;
   box-shadow: 0 2px 4px rgba(0, 0, 0, .12), 0 0 6px rgba(0, 0, 0, .04);
   font-size:25px;
   text-align: center;
-  width:25vh;
+  width:50%;
   height:100%;
 }
 .router-link-exact-active{

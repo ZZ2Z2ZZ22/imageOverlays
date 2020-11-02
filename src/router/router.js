@@ -6,7 +6,7 @@ import User from '../views/User.vue'
 import Register from '../views/Register.vue'
 
 // test
-import MarkImage from '../views/Home/MarkImage.vue'
+import MarkImage from '../views/Home/index.vue'
 
 Vue.use(VueRouter)
 

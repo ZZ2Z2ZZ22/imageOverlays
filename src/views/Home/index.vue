@@ -1,14 +1,20 @@
 <template>
   <div class="home">
     <div class="left">左边</div>
-    <div class="middle">main</div>
-    <div class="right">右边</div>
+    <div class="middle">
+      <MarkImage></MarkImage>
+    </div>
   </div>
 </template>
 
 <script>
+import MarkImage from './MarkImage'
+
 export default {
-  name: "Home"
+  name: "Home",
+  components:{
+    MarkImage
+  }
 }
 </script>
 
@@ -30,15 +36,10 @@ export default {
 }
 .left{
   height:100%;
-  background-color:red;
-}
-.right{
-  height:100%;
-  background-color:yellow;
+  /* background-color:red; */
 }
 .middle{
   flex:1;
   height:100%;
-  background-color:blue;
+  /* background-color:blue; */
 }
-</style>

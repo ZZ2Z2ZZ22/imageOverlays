@@ -106,7 +106,7 @@ import axios from "axios"
 var props = {
     mode:{
         type: String,
-        default: ""
+        default: "drawRect"
     },
     //父组件只需要提供图片名称，图片必须放在static/img中，不然无法使用require动态加载
     // fixme: 改为父组件传递base64格式的图片数据

@@ -566,7 +566,7 @@ var methods = {
         }
 
         const url = "";
-        const postData = {
+        const prePostData = {
             folder: "",
             filename: "",
             path: "",
@@ -580,13 +580,13 @@ var methods = {
             },
             segmented: 0
         }
-        let postData = this.parse2xml(postData);
+        const postData = this.parse2xml(prePostData);
         this.$confirm('此操作将提交全部已标注数据到后台, 是否继续?', '提示', {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
             type: 'warning'
         }).then(() => {
-            // axios.post(url, postData);
+            axios.post(url, postData);
             this.$message({
                 type: 'success',
                 message: '提交成功!'

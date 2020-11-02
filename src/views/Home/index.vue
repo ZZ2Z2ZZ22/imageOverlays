@@ -27,19 +27,19 @@
       </div>
     </div>
     <div class="middle">
-<!--      <MarkImage :img-src="picSrc" :mode="mode"></MarkImage>-->
-
-<!--      暂时放图片-->
-      <img width="80%" height="80%" :src="picSrc.src" alt="" v-if="picVisible">
+     <MarkImage :img-src="picSrc" :mode="mode"></MarkImage>
     </div>
   </div>
 </template>
 
 <script>
-// import MarkImage from "@/views/Home/MarkImage";
+import MarkImage from './MarkImage'
+
 export default {
   name: "Home",
-  // components: {MarkImage},
+  components: {
+    MarkImage
+  },
   data() {
     return {
       types:[

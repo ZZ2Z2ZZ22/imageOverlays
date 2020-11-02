@@ -82,4 +82,12 @@ export default {
 /deep/ body > .el-container {
   margin-bottom: 100px;
 }
+.person{
+  float: right;
+  color:black;
+  border-color:transparent;
+  font-size:4.0vh;
+  background-color: #B3C0D1;
+  line-height:35px;
+}
 </style>

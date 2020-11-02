@@ -150,6 +150,20 @@ var methods = {
             }, delay);
         };
     },
+    // object转xml的工具
+    parse2xml: function(data){
+        var xmldata = '';
+        for(var i in data){
+            xmldata+= '<'+i+'>';
+            if(typeof data[i] === 'object'){
+                xmldata+= this.parse2xml(data[i]);
+            }else{
+                xmldata+= data[i];
+            }
+            xmldata+= '</'+i+'>';
+        }
+        return xmldata;
+    },
 
     // 得到标注矢量层 gFeatureLayer
     getFeatureLayer: function(){
@@ -563,21 +577,45 @@ var methods = {
         }
 
         const url = "";
+        /**
+         * data ={
+            Folder: “”,
+            filename: “”,
+            Path: “”,
+            Source:{ database: “” },
+            Size{
+                width: “”,
+                height: “”
+            },
+            Segmented: “”
+}
+         */
         const postData = {
-            bnddata: this.bndBoxData,
-            imgdata: this.imgdata
+            folder: "",
+            filename: "",
+            path: "",
+            source: {
+                database: ""
+            },
+            size: {
+                width: this.imgWidth,
+                height: this.imgHeight,
+                depth: 0
+            },
+            segmented: 0
         }
+        let postData = this.parse2xml(postData);
         this.$confirm('此操作将提交全部已标注数据到后台, 是否继续?', '提示', {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
             type: 'warning'
         }).then(() => {
-            // axios.post(url, JSON.stringify(postData));
+            // axios.post(url, postData);
             this.$message({
                 type: 'success',
                 message: '提交成功!'
             });
-            // this.bndBoxData.splice(0); //清空已提交数据
+            //清空已提交数据
             this.handleClearSubmitData();
         }).catch(() => {
           this.$message({

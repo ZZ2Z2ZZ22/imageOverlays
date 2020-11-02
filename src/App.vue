@@ -2,7 +2,14 @@
   <div id="app">
     <el-container>
       <el-header>图片标注平台
-        <el-button type="primary" icon="el-icon-s-custom"></el-button>
+        <el-dropdown class="person" @command="handleCommand" v-if="show">
+           <span class="el-dropdown-link">
+           <i class="el-icon-s-custom"></i>
+          </span>
+          <el-dropdown-menu slot="dropdown">
+            <el-dropdown-item command="logout">退出</el-dropdown-item>
+          </el-dropdown-menu>
+        </el-dropdown>
       </el-header>
       <el-main>
         <router-view></router-view>
@@ -14,7 +21,26 @@
 <script>
 export default {
   name: 'App',
-  components: {
+  components:{
+  },
+  computed:{
+    show(){
+      if(this.$route.path=='/user'){
+        return false;
+      }
+        return true;
+    },
+  },
+  methods:{
+    handleCommand(command) {
+      switch (command) {
+        case "logout": {
+          this.$router.back();
+          break;
+        }
+      }
+    },
+
   }
 }
 </script>
@@ -23,17 +49,15 @@ export default {
 /deep/ .el-container{
   height:100vh;
 }
-.el-button{
-  float:right;
 
-}
-/deep/ .el-button--primary{
+.person{
+  float: right;
   color:black;
   border-color:transparent;
   font-size:4.0vh;
   background-color: #B3C0D1;
-  line-height:35px;
 }
+
 /deep/ .el-header, .el-footer {
   background-color: #B3C0D1;
   color: #333;

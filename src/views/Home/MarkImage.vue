@@ -2,7 +2,7 @@
     <el-container>
         <el-main>
             <el-button id="drawRect" class="command-btn" @click="setMode('drawRect')">编辑矩形边框</el-button>
-            <el-button id="pan" class="command-btn" @click="setMode('pan')">平移模式</el-button>
+            <!-- <el-button id="pan" class="command-btn" @click="setMode('pan')">平移模式</el-button> -->
             <div id="map"></div>
         </el-main>
         <el-aside width="420px" style="margin-top: 20px">
@@ -86,7 +86,7 @@
                         width="70">
                         <template slot-scope="scope">
                             <el-col>
-                                <el-button @click="handleClick(scope.row)" type="text" size="small">编辑</el-button>
+                                <el-button @click="handleEditMarked(scope.row)" type="text" size="small">编辑</el-button>
                             </el-col>
                             <el-col>
                                 <el-button @click="handleDeleteRow(scope.row)" type="text" size="small">删除</el-button>
@@ -101,6 +101,7 @@
 
 <script>
 import AILabel from 'ailabel'
+import axios from "axios"
 
 var props = {
     mode:{
@@ -108,6 +109,7 @@ var props = {
         default: ""
     },
     //父组件只需要提供图片名称，图片必须放在static/img中，不然无法使用require动态加载
+    // fixme: 改为父组件传递base64格式的图片数据
     img: {
         type: String,
         default: "test01.jpeg"
@@ -121,18 +123,11 @@ var data = function() {
         imgHeight: 0,
         imgSrc: require("../../../static/img/" + this.img),
         gMap: "",
-        isSelected: false, // 是否有标注边框被选中，控制边框编辑框的显示
+        isSelected: "", // 是否有标注边框被选中，控制编辑模式
         // 当前边框数据
         // bnxboxname不可以为undefined，必须有初始值，因为当前边框使用的是v-show
         bndBoxName: "",
-        editingBoxData: [
-        //     {
-        //     id: "",
-        //     bndBoxName: "",
-        //     xRange: "",
-        //     yRange: ""
-        // }
-        ],
+        editingBoxData: [],
         // 已标注好的边框数据
         bndBoxData: [],
         currentBndBox: "" //当前选中的边框
@@ -140,6 +135,11 @@ var data = function() {
 }
 
 var methods = {
+    /**
+     * part 1:
+     * 一些工具函数
+     */
+
     // 封装的节流函数
     throttle: function(fn, delay=500){
         let timer = null;
@@ -163,7 +163,7 @@ var methods = {
         }
     },
 
-    // 暂时选项：矩形；平移（待实现：多边形）
+    // 改变模式 暂时选项：矩形；（待实现：多边形）
     setMode: function(mode){
         // 根据传入参数变换样式
         let gFeatureStyle = {};
@@ -179,43 +179,37 @@ var methods = {
         this.gMap && this.gMap.setMode(mode, gFeatureStyle);
     },
 
+    // 根据points等直接生成一个边框的数据
     calculateRange: function(points, boxId, featureId){
-        let xmin = points[0].x;
-        let xmax = points[1].x;
-        let ymin = points[2].y;
-        let ymax = points[1].y;
-        // fixme: 在这里添加当前边框数据
+        let x1 = points[0].x, x2 = points[1].x;
+        let y1 = points[1].y, y2 = points[2].y;
+        let xmax, xmin, ymax, ymin;
+
+        [xmax, xmin] = (x1 > x2) ? [x1, x2] : [x2, x1];
+        [ymax, ymin] = (y1 > y2) ? [y1, y2] : [y2, y1];
+        
         let bndData = {
             id: boxId,
             featureId: featureId,
             bndBoxName: "",
-            xRange: "("+ xmin + "," + xmax + ")",
-            yRange: "("+ ymin + "," + ymax + ")"
+            xRange: "("+ xmin.toFixed(2) + "," + xmax.toFixed(2) + ")",
+            yRange: "("+ ymin.toFixed(2) + "," + ymax.toFixed(2) + ")"
         }
         return bndData;
     },
 
-    // 确认标注边框数据，将当前编辑框数据加入已标注好数据列表中
-    handleConfirmMark: function(){
-        if (this.editingBoxData.length === 0){
-            this.$message.error('当前无可标注边框');
-        }else if (this.bndBoxName === ""){
-            this.$message.error('请输入标记目标名称！');
-        }else if (!this.currentBndBox && this.editingBoxData.length !== 1){
-            this.$message.error('请选中一个边框再确认标记！');
-        }else{
-            if (this.editingBoxData.length === 1){
-                this.currentBndBox = this.editingBoxData[0];
-            }
-            this.currentBndBox.bndBoxName = this.bndBoxName;
-            // 加入已标记列表
-            this.bndBoxData.push(this.currentBndBox);
-            // 在未标记列表中删除
-            this.removeFromNonMarkData(this.currentBndBox.featureId);
+    // 修改未标注列表中的坐标
+    calculateExistRange: function(index, points){
+        if (index === -1) return;
 
-            this.bndBoxName = "";
-            this.currentBndBox = "";
-        }
+        let x1 = points[0].x, x2 = points[1].x;
+        let y1 = points[1].y, y2 = points[2].y;
+        let xmax, xmin, ymax, ymin;
+
+        [xmax, xmin] = (x1 > x2) ? [x1, x2] : [x2, x1];
+        [ymax, ymin] = (y1 > y2) ? [y1, y2] : [y2, y1];
+        this.editingBoxData[index].xRange = "("+ xmin.toFixed(2) + "," + xmax.toFixed(2) + ")";
+        this.editingBoxData[index].yRange = "("+ ymin.toFixed(2) + "," + ymax.toFixed(2) + ")";
     },
 
     /**
@@ -223,16 +217,6 @@ var methods = {
      * params: val || 可能是featureid ; 可能是bndboxdata对象
      * return: 不存在：-1；存在：返回对应下标值
      */
-    // findFeatureNonMark: function (featureId){
-    //     const len = this.editingBoxData.length;
-    //     for (let i = 0; i < len; i++){
-    //         if (this.editingBoxData[i].featureId === featureId){
-    //             return i;
-    //         }
-    //     }
-    //     return -1;
-    // },
-
     findFeatureNonMark: function (val){
         if (val){
             if (typeof val === "object" && val != null){
@@ -270,9 +254,7 @@ var methods = {
         }
     },
 
-    /**
-     * 在未标注边框列表中删除对应标注边框
-     */
+    // 在未标注边框列表中删除对应标注边框
     removeFromNonMarkData: function (featureId){
         const index = this.findFeatureNonMark(featureId);
         if (index !== -1){
@@ -282,15 +264,223 @@ var methods = {
         }
     },
 
-    /**
-     * 在已标注边框列表中删除对应标注边框
-     */
+    // 在已标注边框列表中删除对应标注边框
     removeFromMarkedData: function (featureId){
         const index = this.findFeatureMarked(featureId);
         if (index !== -1){
             this.bndBoxData.splice(index, 1);
         }else{
             console.log("Can't remove non-exist feature in marked data list.");
+        }
+    },
+
+    // 给边框加删除按钮
+    // 参数为feature对象（注意不是featureId）
+    addDeleteMarker(feature){
+        let that = this;
+        let cFeature = feature;
+        const feaId = cFeature.id;
+        const featureBounds = cFeature.getBounds();
+        const leftTopPoint = featureBounds[0]; // 边界坐上角坐标
+        let deleteMarker = new AILabel.Marker(`marker-${feaId}`,
+            {
+                src: require('../../assets/delete.png'),
+                x: leftTopPoint.x,
+                y: leftTopPoint.y,
+                offset: {
+                    x: 0,
+                    y: 0
+                },
+                featureId: feaId
+            });
+        this.gMap.mLayer.addMarker(deleteMarker);
+        
+        // 监听删除边框事件：删除选定的边框
+        deleteMarker.regEvent('click', function () {
+            const feaId = this.info.featureId;
+            that.handleDeleteFeature(feaId);
+        });
+    },
+
+    // 删除指定边框的删除按钮
+    removeDeleteMarker(featureId){
+        let feaId = featureId;
+        this.gMap.mLayer.removeMarkerById(`marker-${feaId}`);
+    },
+
+    /**
+     * 选中边框改变
+     * 当参数为对象，说明当前列表项被选择，直接执行当前行改变；
+     * 当参数为字符串，说明某个边框在矢量层被选择，再次调用本函数执行当前行改变
+     */
+
+    // 改变当前行并且改变高亮状态
+    currentChangeNonMark(val){
+        if (val){
+            let pre = this.currentBndBox;
+            let feaLayer = this.getFeatureLayer();
+            if (pre){
+                let preFea = feaLayer.getFeatureById(pre.featureId);
+                this.removeDeleteMarker(preFea.id);
+                preFea.deActive();
+            }
+            this.currentBndBox = val;
+            this.$refs.nonMarkBoxTable.setCurrentRow(val);
+            this.$refs.markedBoxTable.setCurrentRow();
+
+            let fea = feaLayer.getFeatureById(val.featureId);
+            fea.active();
+            this.addDeleteMarker(fea);
+        }
+    },
+    // 改变当前行并且改变高亮状态
+    currentChangeMarked(val){
+        if (val){
+            let pre = this.currentBndBox;
+            let feaLayer = this.getFeatureLayer();
+            if (pre){
+                let preFea = feaLayer.getFeatureById(pre.featureId);
+                // console.log("pre", pre);
+                this.removeDeleteMarker(preFea.id);
+                preFea.deActive();
+            }
+
+            this.currentBndBox = val;
+            this.$refs.markedBoxTable.setCurrentRow(val);
+            this.$refs.nonMarkBoxTable.setCurrentRow();
+
+            let fea = feaLayer.getFeatureById(val.featureId);
+            fea.active();
+            this.addDeleteMarker(fea);
+        }
+    },
+
+    /**
+     * part 2: 
+     * 边框标注事件的回调函数，一共四个事件：
+     * 1. 边框绘制
+     * 2. 进入编辑模式
+     * 3. 编辑模式中
+     * 4. 结束编辑模式
+     */
+
+    // 矩形边框绘制函数
+    drawRectBox(type, points, gFeatureStyle = {}){
+        // 生成元素唯一标志（时间戳）
+        const timestamp = new Date().getTime();
+        // 元素添加
+        let featureId = `feature-${timestamp}`;
+        let fea = new AILabel.Feature.Rect(featureId, points, {
+            id: ++this.idCount
+        }, gFeatureStyle);
+        let gFeatureLayer = this.getFeatureLayer();
+        gFeatureLayer.addFeature(fea);
+
+        let bndData = this.calculateRange(points, fea.data.id, featureId);
+        this.editingBoxData.push(bndData);
+        this.handleCurrentChange(bndData);
+        // that.isSelected = true;
+    },
+
+    // 进入编辑模式
+    // feature: 标注对象；如果传入的参数仅是标注对象的id，则需要转换为feature对象
+    enterEditMode(feature){
+        // var that = this;
+        let cFeature = feature;
+        // 转换为feature对象
+        if (typeof feature !== "object"){
+            let feaLayer = this.getFeatureLayer();
+            cFeature = feaLayer.getFeatureById(feature);
+        }
+
+        // 同时在编辑框选中当前边框
+        const feaId = cFeature.id;
+        this.handleCurrentChange(feaId);
+        const index = this.findFeatureNonMark(feaId);
+        if (index === -1) return;
+
+        // 删除按钮添加
+        this.addDeleteMarker(cFeature);
+    },
+
+    // 编辑模式中
+    updateEditMode(type, feature, points){
+        if (!this.gMap.mLayer) return;
+        // 得到选定的边框id
+        const index = this.findFeatureNonMark(feature.id);
+        if (index === -1) return;
+        const marker = this.gMap.mLayer.getMarkerById(`marker-${feature.id}`);
+        if (!marker) return; //不存在就返回
+        
+        const bounds = AILabel.Util.getBounds(points);
+        const leftTopPoint = bounds[0]; // 边界坐上角坐标
+        marker.update({x: leftTopPoint.x, y: leftTopPoint.y});
+
+        // 在这里实时变更编辑框中的数据
+        if (index === -1) return;
+        this.calculateExistRange(index, points);
+    },
+
+    endEditMode(type, activeFeature, points){
+        const index = this.findFeatureNonMark(activeFeature.id);
+        if (index === -1) return;
+
+        activeFeature.update({points});
+        activeFeature.show();
+
+        // 通过points来更新编辑框中的坐标范围数据
+        if (index === -1) return;
+        this.calculateExistRange(index, points);
+    },
+
+    /**
+     * part 3:
+     * 页面按钮的handler
+     */
+
+    // 确认标注边框数据，将当前编辑框数据加入已标注好数据列表中
+    handleConfirmMark: function(){
+        if (this.editingBoxData.length === 0){
+            this.$message.error('当前无可标注边框');
+        }else if (this.bndBoxName === ""){
+            this.$message.error('请输入标记目标名称！');
+        }else if (!this.currentBndBox && this.editingBoxData.length !== 1){
+            this.$message.error('请选中一个边框再确认标记！');
+        }else{
+            if (this.editingBoxData.length === 1){
+                this.currentBndBox = this.editingBoxData[0];
+            }
+            this.currentBndBox.bndBoxName = this.bndBoxName;
+            // 加入已标记列表
+            this.bndBoxData.push(this.currentBndBox);
+            // 在未标记列表中删除
+            this.removeFromNonMarkData(this.currentBndBox.featureId);
+
+            let feaLayer = this.getFeatureLayer();
+            const fea = feaLayer.getFeatureById(this.currentBndBox.featureId);
+            this.removeDeleteMarker(fea.id);
+            fea.deActive();
+
+            this.bndBoxName = "";
+            this.currentBndBox = "";
+        }
+    },
+
+    // 响应表格行：选中当前行， 并且高亮
+    handleCurrentChange(val) {
+        // console.log("val", val);
+        let index_1 = -1;
+        let index_2 = -1;
+        index_1 = this.findFeatureNonMark(val);
+        index_2 = this.findFeatureMarked(val);
+       
+        if (index_1 !== -1){ //在未标注列表中
+            this.currentChangeNonMark(this.editingBoxData[index_1]);
+        }else if (index_2 !== -1){ //在标注列表中
+            this.currentChangeMarked(this.bndBoxData[index_2]);
+        }else{
+            this.$refs.nonMarkBoxTable.setCurrentRow();
+            this.$refs.markedBoxTable.setCurrentRow();
         }
     },
 
@@ -323,9 +513,20 @@ var methods = {
     },
 
     /**
-     * 已标注列表的删除按钮的回调函数：
-     * 删除某行已标注边框数据
+     * 已标注列表的编辑/删除按钮的回调函数：
      */
+
+    // 响应编辑按钮：把已标注列表数据放到未标注列表
+    handleEditMarked(rowId){
+        const index = this.findFeatureMarked(rowId);
+
+        let temp = this.bndBoxData.splice(index, 1);
+        this.editingBoxData.push(temp[0]);
+        this.bndBoxName = temp[0].bndBoxName;
+        // this.handleCurrentChange(temp);
+        this.enterEditMode(temp[0].featureId);
+    },
+    // 删除某行已标注边框数据
     handleDeleteRow: function(rowId){
         let index = this.bndBoxData.indexOf(rowId);
         if (index !== -1){
@@ -336,50 +537,38 @@ var methods = {
         }
     },
 
-    // 选中边框改变
-    /**
-     * 当参数为对象，说明当前列表项被选择，直接执行当前行改变；
-     * 当参数为字符串，说明某个边框在矢量层被选择，再次调用本函数执行当前行改变
-     */
-
-    // 改变当前行并且改变高亮状态
-    currentChangeNonMark(val){
-        if (val){
-            this.currentBndBox = val;
-            this.$refs.nonMarkBoxTable.setCurrentRow(val);
-            this.$refs.markedBoxTable.setCurrentRow();
-        }
-    },
-    // 改变当前行并且改变高亮状态
-    currentChangeMarked(val){
-        if (val){
-            this.currentBndBox = val;
-            this.$refs.markedBoxTable.setCurrentRow(val);
-            this.$refs.nonMarkBoxTable.setCurrentRow();
-        }
-    },
-
-    // 选中当前行的响应事件
-    handleCurrentChange(val) {
-        // console.log("val", val);
-        let index_1 = -1;
-        let index_2 = -1;
-        index_1 = this.findFeatureNonMark(val);
-        index_2 = this.findFeatureMarked(val);
-       
-        if (index_1 !== -1){ //在未标注列表中
-            this.currentChangeNonMark(this.editingBoxData[index_1]);
-        }else if (index_2 !== -1){ //在标注列表中
-            this.currentChangeMarked(this.bndBoxData[index_2]);
-        }else{
-            this.$refs.nonMarkBoxTable.setCurrentRow();
-            this.$refs.markedBoxTable.setCurrentRow();
-        }
-    },
-
     // 向后端提交图片属性和边框属性数据
     handleSubmit: function(){
+        if (!this.bndBoxData.length) {
+            this.$message({
+                type: 'warning',
+                message: '已标注边框列表为空，无法提交数据'
+            });
+            return;
+        }
 
+        const url = "";
+        const postData = {
+            bnddata: this.bndBoxData,
+            imgdata: this.imgdata
+        }
+        this.$confirm('此操作将提交全部已标注数据到后台, 是否继续?', '提示', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+        }).then(() => {
+            axios.post(url, JSON.stringify(postData));
+            this.$message({
+                type: 'success',
+                message: '提交成功!'
+            });
+            this.bndBoxData.splice(0); //清空已提交数据
+        }).catch(() => {
+          this.$message({
+            type: 'info',
+            message: '已取消提交'
+          });          
+        });
     }
 }
 
@@ -387,31 +576,21 @@ export default {
     data: data,
     props: props,
     methods: methods,
-    computed: {
-        // fixme: 测试图片属性响应式变化
-        // imgWidthtemp: function (){
-        //     let img = new Image();
-        //     img.src = this.imgSrc;
-        //     img.onload = function () {
-        //         return img.width;
-        //     }
-        // },
-        // imgHeighttemp: function(){
-        //     let img = new Image();
-        //     img.src = this.imgSrc;
-        //     img.onload = function(){
-        //         return img.height;
-        //     }
-        // }
-    },
+    computed: {},
     mounted() {
         /**
          * 参数：
          * 1. 图片宽高
          * 2. 边框样式
          */
-
         // fixme：组件封装之后imgWidth和height应该随imgsrc的变化而变化
+        // let image = new Image();
+        // const imgData = 'data:image/png;base64,........';
+        // image.src = imgData;
+        // image.onload = function(){
+        //     this.imgWidth = image.width;
+        //     this.imgHeight = image.height;
+        // }
         this.imgWidth = 4256;
         this.imgHeight = 2832;
         let gFeatureStyle = {};
@@ -423,24 +602,17 @@ export default {
          * autoPan: 绘制过程中是否允许自动平移
          * autoZoom：绘制过程中是否允许自动滚轮缩放
          * 
-         * 1. 图片层：放置图片
-         * 2. 矢量层：放置标注的边框
+         * 1. 图片层：放置图片 gImageLayer
+         * 2. 矢量层：放置标注的边框 gFeatureLayer
          */
 
         let gMapObj = new AILabel.Map('map', {
-            zoom: this.imgWidth * 2, 
+            zoom: this.imgWidth, 
             cx: 0, cy: 0, 
-            zoomMax: this.imgWidth * 10, zoomMin: this.imgWidth / 10, 
+            zoomMax: this.imgWidth, zoomMin: this.imgWidth, 
             autoPan: true, drawZoom: true
         });
         this.gMap = gMapObj;
-
-        // 缩放比例尺，左上角
-        const scaleControl = new AILabel.Control.Scale(
-            'scale-control-id',
-            {postion: {left: 10, top: 10}}
-        );
-        this.gMap.addControl(scaleControl);
         
         // 图片层实例添加
         let gImageLayer = new AILabel.Layer.Image('img', this.imgSrc, 
@@ -448,64 +620,42 @@ export default {
             {zIndex: 1});
         this.gMap.addLayer(gImageLayer);
 
-        // 缩略图
-        const eagleControl = new AILabel.Control.EagleMap(
-            'eagle-control-id',
-            {
-                container: 'eagle-map', // 自定义缩略图控件展示位置
-                // postion: {right: 10, bottom: 10}, // 当存在container时，此参数不需要传
-                image: {src: this.imgSrc, width: this.imgWidth, height: this.imgHeight},
-                grid: {
-                    rowCount: 3,
-                    columnCount: 3,
-                    color: 'blue'
-                },
-                size: {
-                    width: 200,
-                    height: 150
-                }
-            }
-        );
-        this.gMap.addControl(eagleControl);
-
         // 矢量层实例添加
         let gFeatureLayer = new AILabel.Layer.Feature('featureLayer', {zIndex: 2, transparent: true});
         this.gMap.addLayer(gFeatureLayer);
 
+        // 自动进入禁止平移缩放模式
+        this.gMap.setMode("banMap");
+
         /**
          * 以下是对矩形边框绘制的监听
          * 1. 边框绘制完成 geometryDrawDone
-         * 2. 双击选中边框进入编辑模式 featureSelected
-         * 3. 边框编辑过程中（即改变边框的大小过程中）geometryEditing
-         * 4. 编辑边框完成 geometryEditDone
+         * 2. 编辑模式开始：双击选中边框进入编辑模式 featureSelected
+         * 3. 编辑模式中：边框编辑过程中（即改变边框的大小过程中）geometryEditing
+         * 4. 编辑模式结束：编辑边框完成 geometryEditDone
          */ 
 
-        // 矩形边框绘制完成
+        // 添加边框：矩形边框绘制完成
         this.gMap.events.on('geometryDrawDone', function (type, points) {
-            // 生成元素唯一标志（时间戳）
-            const timestamp = new Date().getTime();
-            // 元素添加
-            let featureId = `feature-${timestamp}`;
-            let fea = new AILabel.Feature.Rect(featureId, points, {
-                id: ++that.idCount
-            }, gFeatureStyle);
-            gFeatureLayer.addFeature(fea);
-
-            let bndData = that.calculateRange(points, fea.data.id, featureId);
-            that.editingBoxData.push(bndData);
-            that.handleCurrentChange(bndData);
-            // that.isSelected = true;
+            that.drawRectBox(type, points, gFeatureStyle);
         });
 
-        // 进入编辑模式之后，编辑边框完成
-        this.gMap.events.on('geometryEditDone', function (type, activeFeature, points) {
-            activeFeature.update({points});
-            activeFeature.show();
-            // fixme：在这里更新当前边框编辑框
-            // let feaId = activeFeature.id;
+        // 编辑模式开始：双击选中编辑矩形框，进入编辑模式
+        this.gMap.events.on('featureSelected', function(feature){
+            console.log("start edit");
+            that.enterEditMode(feature);
+        });
 
-            // 通过points来更新编辑框中的坐标范围数据
-            console.log("edit done：矩形框坐标数据", points);
+        // 编辑模式中：实时变更最右方编辑框中的坐标数据
+        this.gMap.events.on('geometryEditing', this.throttle(function (type, feature, points) {
+            console.log("editing");
+            that.updateEditMode(type, feature, points);
+        }, 200));
+
+        // 编辑模式结束：进入编辑模式之后，编辑边框完成
+        this.gMap.events.on('geometryEditDone', function (type, activeFeature, points) {
+            console.log("end edit");
+            that.endEditMode(type, activeFeature, points);
         });
 
         // feature-reset监听
@@ -513,52 +663,7 @@ export default {
             that.gMap.mLayer.removeAllMarkers();
         });
 
-        // ？为什么这里要做编辑中的监听
-        // 可以实时变更最右方编辑框中的坐标数据
-        this.gMap.events.on('geometryEditing', this.throttle(function (type, feature, points) {
-            if (!this.gMap.mLayer) return;
-            // 得到选定的边框id
-            const marker = this.gMap.mLayer.getMarkerById(`marker-${feature.id}`);
-            if (!marker) return; //不存在就返回
-            
-            const bounds = AILabel.Util.getBounds(points);
-            const leftTopPoint = bounds[0]; // 边界坐上角坐标
-            marker.update({x: leftTopPoint.x, y: leftTopPoint.y});
-            // 在这里实时变更编辑框中的数据
-        }, 1000));
-
-        // 双击选中编辑矩形框，进入编辑模式
-        this.gMap.events.on('featureSelected', function (feature) {
-            let cFeature = feature;
-            // 同时在编辑框选中当前边框
-            that.handleCurrentChange(cFeature.id);
-
-            // 删除按钮添加
-            const featureBounds = cFeature.getBounds();
-            const leftTopPoint = featureBounds[0]; // 边界坐上角坐标
-            let deleteMarker = new AILabel.Marker(`marker-${cFeature.id}`,
-                {
-                    src: require('../../assets/delete.png'),
-                    x: leftTopPoint.x,
-                    y: leftTopPoint.y,
-                    offset: {
-                        x: 0,
-                        y: 0
-                    },
-                    featureId: cFeature.id
-                });
-            that.gMap.mLayer.addMarker(deleteMarker);
-            
-            // 监听删除边框事件
-            // 删除选定的边框
-            // 封装一个函数
-            // params: featureId, 
-            deleteMarker.regEvent('click', function () {
-                const feaId = this.info.featureId;
-                that.handleDeleteFeature(feaId);
-            });
-        });
-
+        // 窗口缩放监听：
         window.onresize = function () {
             this.gMap && this.gMap.resize();
         }
@@ -567,14 +672,9 @@ export default {
 </script>
 
 <style scoped>
-/* .el-table tr.current-row>td{
-    background-color: #a38d11 !important;
-    color: #fff;
-} */
-
 #map {
     width: 100%;
-    height: 600px;
+    height:600px;
     border: 1px solid #aaa;
     position: relative;
     margin-right: 10px;

@@ -600,117 +600,110 @@ var methods = {
         });
     }
 }
+var watch = {
+    img: function(){
+        var that = this;
+
+        function loadImg(src){
+            return new Promise((resolve,reject)=>{
+                let img = new Image();
+                img.src = src;
+                img.onload = () => {
+                    resolve(img);
+                }
+                img.onerror=(err)=>{
+                    reject(err)
+                }
+            })
+        }
+
+        loadImg(this.img).then(img => {
+            this.idCount = 0;
+            this.imgWidth = img.width;
+            this.imgHeight = img.height;
+            let gFeatureStyle = {};
+
+            /**
+             * 容器对象（gMap）声明：
+             * cx, cy：初始中心点坐标
+             * autoPan: 绘制过程中是否允许自动平移
+             * autoZoom：绘制过程中是否允许自动滚轮缩放
+             * 
+             * 1. 图片层：放置图片 gImageLayer
+             * 2. 矢量层：放置标注的边框 gFeatureLayer
+             */
+            let gMapObj = new AILabel.Map('map', {
+                zoom: this.imgWidth, 
+                cx: 0, cy: 0, 
+                zoomMax: this.imgWidth, zoomMin: this.imgWidth, 
+                autoPan: true, drawZoom: true
+            });
+
+            // 图片层实例添加
+            let gImageLayer = new AILabel.Layer.Image('img', this.img, 
+                {w: this.imgWidth, h: this.imgHeight},
+                {zIndex: 1});
+            gMapObj.addLayer(gImageLayer);
+
+            // 矢量层实例添加
+            let gFeatureLayer = new AILabel.Layer.Feature('featureLayer', {zIndex: 2, transparent: true});
+            gMapObj.addLayer(gFeatureLayer);
+
+            // 自动进入禁止平移缩放模式
+            gMapObj.setMode("banMap");
+            // 添加边框：矩形边框绘制完成
+            gMapObj.events.on('geometryDrawDone', function (type, points) {
+                that.drawRectBox(type, points, gFeatureStyle);
+            });
+
+            /**
+             * 以下是对矩形边框绘制的监听
+             * 1. 边框绘制完成 geometryDrawDone
+             * 2. 编辑模式开始：双击选中边框进入编辑模式 featureSelected
+             * 3. 编辑模式中：边框编辑过程中（即改变边框的大小过程中）geometryEditing
+             * 4. 编辑模式结束：编辑边框完成 geometryEditDone
+             */ 
+
+            // 编辑模式开始：双击选中编辑矩形框，进入编辑模式
+            gMapObj.events.on('featureSelected', function(feature){
+                that.enterEditMode(feature);
+            });
+
+            // 编辑模式中：实时变更最右方编辑框中的坐标数据
+            gMapObj.events.on('geometryEditing', this.throttle(function (type, feature, points) {
+                that.updateEditMode(type, feature, points);
+            }, 50));
+
+            // 编辑模式结束：进入编辑模式之后，编辑边框完成
+            gMapObj.events.on('geometryEditDone', function (type, activeFeature, points) {
+                that.endEditMode(type, activeFeature, points);
+            });
+
+            // feature-reset监听
+            gMapObj.events.on('featureStatusReset', function () {
+                that.gMap.mLayer.removeAllMarkers();
+            });
+
+            // 窗口缩放监听：
+            window.onresize = function () {
+                gMapObj && gMapObj.resize();
+            }
+            this.gMap = gMapObj;
+            if (this.mode) this.setMode(this.mode);
+        }).catch(err => {
+            console.error(err);
+        })            
+    },
+    mode: function(){
+        if (this.mode) this.setMode(this.mode);
+    }
+}
 
 export default {
     data: data,
     props: props,
     methods: methods,
-    watch: {
-        img: function(){
-            var that = this;
-
-            function loadImg(src){
-                return new Promise((resolve,reject)=>{
-                    let img = new Image();
-                    img.src = src;
-                    img.onload = () => {
-                        resolve(img);
-                    }
-                    img.onerror=(err)=>{
-                        reject(err)
-                    }
-                })
-            }
-
-            loadImg(this.img).then(img => {
-                this.idCount = 0;
-                this.imgWidth = img.width;
-                this.imgHeight = img.height;
-                let gFeatureStyle = {};
-
-                /**
-                 * 容器对象（gMap）声明：
-                 * cx, cy：初始中心点坐标
-                 * autoPan: 绘制过程中是否允许自动平移
-                 * autoZoom：绘制过程中是否允许自动滚轮缩放
-                 * 
-                 * 1. 图片层：放置图片 gImageLayer
-                 * 2. 矢量层：放置标注的边框 gFeatureLayer
-                 */
-                let gMapObj = new AILabel.Map('map', {
-                    zoom: this.imgWidth, 
-                    cx: 0, cy: 0, 
-                    zoomMax: this.imgWidth, zoomMin: this.imgWidth, 
-                    autoPan: true, drawZoom: true
-                });
-
-                // 图片层实例添加
-                let gImageLayer = new AILabel.Layer.Image('img', this.img, 
-                    {w: this.imgWidth, h: this.imgHeight},
-                    {zIndex: 1});
-                gMapObj.addLayer(gImageLayer);
-
-                // 矢量层实例添加
-                let gFeatureLayer = new AILabel.Layer.Feature('featureLayer', {zIndex: 2, transparent: true});
-                gMapObj.addLayer(gFeatureLayer);
-
-                // 自动进入禁止平移缩放模式
-                gMapObj.setMode("banMap");
-                // 添加边框：矩形边框绘制完成
-                gMapObj.events.on('geometryDrawDone', function (type, points) {
-                    that.drawRectBox(type, points, gFeatureStyle);
-                });
-
-                /**
-                 * 以下是对矩形边框绘制的监听
-                 * 1. 边框绘制完成 geometryDrawDone
-                 * 2. 编辑模式开始：双击选中边框进入编辑模式 featureSelected
-                 * 3. 编辑模式中：边框编辑过程中（即改变边框的大小过程中）geometryEditing
-                 * 4. 编辑模式结束：编辑边框完成 geometryEditDone
-                 */ 
-
-                // 编辑模式开始：双击选中编辑矩形框，进入编辑模式
-                gMapObj.events.on('featureSelected', function(feature){
-                    that.enterEditMode(feature);
-                });
-
-                // 编辑模式中：实时变更最右方编辑框中的坐标数据
-                gMapObj.events.on('geometryEditing', this.throttle(function (type, feature, points) {
-                    that.updateEditMode(type, feature, points);
-                }, 100));
-
-                // 编辑模式结束：进入编辑模式之后，编辑边框完成
-                gMapObj.events.on('geometryEditDone', function (type, activeFeature, points) {
-                    that.endEditMode(type, activeFeature, points);
-                });
-
-                // feature-reset监听
-                gMapObj.events.on('featureStatusReset', function () {
-                    that.gMap.mLayer.removeAllMarkers();
-                });
-
-                // 窗口缩放监听：
-                window.onresize = function () {
-                    gMapObj && gMapObj.resize();
-                }
-                this.gMap = gMapObj;
-                if (this.mode) this.setMode(this.mode);
-            }).catch(err => {
-                console.error(err);
-            })            
-        },
-        mode: function(){
-            if (this.mode) this.setMode(this.mode);
-        }
-    },
-    computed: {
-        imgWidthtest: function(){
-            return this.imgWidth;
-        },
-        imgHeighttest: function(){
-            return this.imgHeight;
-        }
-    },
+    watch: watch,
     mounted() {
         this.gMap = "";
     }

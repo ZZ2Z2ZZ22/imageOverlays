@@ -25,7 +25,7 @@ export default {
   },
   computed:{
     show(){
-      if(this.$route.path=='/user'){
+      if(this.$route.path==='/user'||this.$route.path==='/user/login'||this.$route.path==='/user/register'){
         return false;
       }
         return true;
@@ -88,6 +88,6 @@ export default {
   border-color:transparent;
   font-size:4.0vh;
   background-color: #B3C0D1;
-  line-height:35px;
+  line-height:2;
 }
 </style>

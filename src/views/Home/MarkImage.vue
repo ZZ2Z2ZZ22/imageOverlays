@@ -113,7 +113,6 @@ var data = function() {
         idCount: 0, // 边框序号，每新加载一张图片，都要置0
         imgWidth: 0,
         imgHeight: 0,
-        // imgSrc: this.img,
         gMap: "",
         isSelected: "", // 是否有标注边框被选中，控制编辑模式
         // 当前边框数据
@@ -566,7 +565,7 @@ var methods = {
         }
 
         const url = "";
-        const postData = {
+        let postData = {
             folder: "",
             filename: "",
             path: "",
@@ -580,13 +579,13 @@ var methods = {
             },
             segmented: 0
         }
-        let postData = this.parse2xml(postData);
+        postData = this.parse2xml(postData);
         this.$confirm('此操作将提交全部已标注数据到后台, 是否继续?', '提示', {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
             type: 'warning'
         }).then(() => {
-            // axios.post(url, postData);
+            axios.post(url, postData);
             this.$message({
                 type: 'success',
                 message: '提交成功!'
@@ -597,7 +596,7 @@ var methods = {
           this.$message({
             type: 'info',
             message: '已取消提交'
-          });          
+          });
         });
     }
 }

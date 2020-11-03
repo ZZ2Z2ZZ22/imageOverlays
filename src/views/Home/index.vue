@@ -44,9 +44,9 @@ export default {
     return {
       types:[
         {name:'矩形', value: "drawRect"},
-        {name:'圆形', value: ""},
-        {name:'椭圆', value: ""},
-        {name:'菱形', value: ""},
+        // {name:'圆形', value: ""},
+        // {name:'椭圆', value: ""},
+        // {name:'菱形', value: ""},
       ],
       mode:'',
       picSrc: {name:'',src:''},
@@ -54,7 +54,6 @@ export default {
     };
   },
   methods: {
-
     //删除图片
     handleRemove(file) {
       if(file.name==this.picSrc.name){
@@ -76,7 +75,6 @@ export default {
           that.picSrc.name=file.name;
        }
       }
-
     },
 
     beforeRemove(file) {

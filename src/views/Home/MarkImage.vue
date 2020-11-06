@@ -101,10 +101,14 @@ var props = {
         type: String,
         default: "drawRect"
     },
-    // 父组件传递base64格式的图片数据
+    // 父组件传递base64格式的图片数据字符串
     img: {
-        type: String,
-        default: ""
+        type:String ,
+        default:''
+    },
+    imgName:{
+        type:String ,
+        default:''
     }
 }
 // 数据对象
@@ -144,20 +148,6 @@ var methods = {
             }, delay);
         };
     },
-    // object转xml的工具
-    parse2xml: function(data){
-        var xmldata = '';
-        for(var i in data){
-            xmldata+= '<'+i+'>';
-            if(typeof data[i] === 'object'){
-                xmldata+= this.parse2xml(data[i]);
-            }else{
-                xmldata+= data[i];
-            }
-            xmldata+= '</'+i+'>';
-        }
-        return xmldata;
-    },
 
     // 得到标注矢量层 gFeatureLayer
     getFeatureLayer: function(){
@@ -179,9 +169,9 @@ var methods = {
     },
 
     // 根据points等直接生成一个边框的数据
-    calculateRange: function(points, boxId, featureId){
-        let x1 = points[0].x, x2 = points[1].x;
-        let y1 = points[1].y, y2 = points[2].y;
+    calculateRange: function(points, boxId, featureId,imgWidth,imgHeight){
+        let x1 = points[0].x+0.5*imgWidth, x2 = points[1].x+0.5*imgWidth;
+        let y1 = 0-(points[1].y-0.5*imgHeight), y2 = 0-(points[2].y-0.5*imgHeight);
         let xmax, xmin, ymax, ymin;
 
         [xmax, xmin] = (x1 > x2) ? [x1, x2] : [x2, x1];
@@ -191,6 +181,10 @@ var methods = {
             id: boxId,
             featureId: featureId,
             bndBoxName: "",
+            xmin:xmin.toFixed(2),
+            xmax:xmax.toFixed(2),
+            ymin:ymin.toFixed(2),
+            ymax:ymax.toFixed(2),
             xRange: "("+ xmin.toFixed(2) + "," + xmax.toFixed(2) + ")",
             yRange: "("+ ymin.toFixed(2) + "," + ymax.toFixed(2) + ")"
         }
@@ -198,15 +192,18 @@ var methods = {
     },
 
     // 修改未标注列表中的坐标
-    calculateExistRange: function(index, points){
+    calculateExistRange: function(index, points,imgWidth,imgHeight){
         if (index === -1) return;
-
-        let x1 = points[0].x, x2 = points[1].x;
-        let y1 = points[1].y, y2 = points[2].y;
+        let x1 = points[0].x+0.5*imgWidth, x2 = points[1].x+0.5*imgWidth;
+        let y1 = 0-(points[1].y-0.5*imgHeight), y2 = 0-(points[2].y-0.5*imgHeight);
         let xmax, xmin, ymax, ymin;
 
         [xmax, xmin] = (x1 > x2) ? [x1, x2] : [x2, x1];
         [ymax, ymin] = (y1 > y2) ? [y1, y2] : [y2, y1];
+        this.editingBoxData[index].xmin=xmin.toFixed(2);
+        this.editingBoxData[index].xmax=xmax.toFixed(2);
+        this.editingBoxData[index].ymin=ymin.toFixed(2);
+        this.editingBoxData[index].ymax=ymax.toFixed(2);
         this.editingBoxData[index].xRange = "("+ xmin.toFixed(2) + "," + xmax.toFixed(2) + ")";
         this.editingBoxData[index].yRange = "("+ ymin.toFixed(2) + "," + ymax.toFixed(2) + ")";
     },
@@ -373,7 +370,7 @@ var methods = {
      */
 
     // 矩形边框绘制函数
-    drawRectBox(type, points, gFeatureStyle = {}){
+    drawRectBox(type, points, gFeatureStyle = {},imgWidth,imgHeight){
         // 生成元素唯一标志（时间戳）
         const timestamp = new Date().getTime();
         // 元素添加
@@ -384,7 +381,7 @@ var methods = {
         let gFeatureLayer = this.getFeatureLayer();
         gFeatureLayer.addFeature(fea);
 
-        let bndData = this.calculateRange(points, fea.data.id, featureId);
+        let bndData = this.calculateRange(points, fea.data.id, featureId,imgWidth,imgHeight);
         this.editingBoxData.push(bndData);
         this.handleCurrentChange(bndData);
         // that.isSelected = true;
@@ -412,7 +409,7 @@ var methods = {
     },
 
     // 编辑模式中
-    updateEditMode(type, feature, points){
+    updateEditMode(type, feature, points,imgWidth,imgHeight){
         if (!this.gMap.mLayer) return;
         // 得到选定的边框id
         const index = this.findFeatureNonMark(feature.id);
@@ -426,10 +423,10 @@ var methods = {
         marker.update({x: leftTopPoint.x, y: leftTopPoint.y});
 
         // 在这里实时变更编辑框中的数据
-        this.calculateExistRange(index, points);
+        this.calculateExistRange(index, points,imgWidth,imgHeight);
     },
 
-    endEditMode(type, activeFeature, points){
+    endEditMode(type, activeFeature, points,imgWidth,imgHeight){
         const index = this.findFeatureNonMark(activeFeature.id);
         if (index === -1) return;
 
@@ -438,7 +435,7 @@ var methods = {
 
         // 通过points来更新编辑框中的坐标范围数据
         if (index === -1) return;
-        this.calculateExistRange(index, points);
+        this.calculateExistRange(index, points,imgWidth,imgHeight);
     },
 
     /**
@@ -564,35 +561,57 @@ var methods = {
             return;
         }
 
-        const url = "";
+        const url = "192.168.1.222:8003/iv/accept-xml";
         let postData = {
-            folder: "",
-            filename: "",
-            path: "",
+            folder: "folder",
+            filename: this.imgName,
+            path: "path",
             source: {
-                database: ""
+                "database": ""
             },
             size: {
                 width: this.imgWidth,
                 height: this.imgHeight,
-                depth: 0
+                depth: 3
             },
-            segmented: 0
+            segmented: 0,
+            object:[],
         }
-        postData = this.parse2xml(postData);
+        for(let i=0;i<this.bndBoxData.length;i++){
+            postData.object.push({
+                name:this.bndBoxData[i].bndBoxName,
+                pose:"pose",
+                truncated:0,
+                diffucult:0,
+                bndbox:{
+                    xmin:this.bndBoxData[i].xmin,
+                    ymin:this.bndBoxData[i].ymin,
+                    xmax:this.bndBoxData[i].xmax,
+                    ymax:this.bndBoxData[i].ymax,
+                }
+
+            })
+        }
+
+        let formData = new FormData();
+        formData.append("jsonInfo",JSON.stringify(postData))
+        console.log(formData)
         this.$confirm('此操作将提交全部已标注数据到后台, 是否继续?', '提示', {
             confirmButtonText: '确定',
             cancelButtonText: '取消',
             type: 'warning'
         }).then(() => {
-            axios.post(url, postData);
-            this.$message({
+            axios.post(url, formData,{headers: {'Content-Type':'application/x-www-form-urlencoded'}}).then((response)=>{
+                console.log(response);
+                this.$message({
                 type: 'success',
                 message: '提交成功!'
+                });
+                //清空已提交数据
+                this.handleClearSubmitData();
             });
-            //清空已提交数据
-            this.handleClearSubmitData();
-        }).catch(() => {
+        }).catch((e) => {
+          console.log(e);
           this.$message({
             type: 'info',
             message: '已取消提交'
@@ -603,6 +622,15 @@ var methods = {
 var watch = {
     img: function(){
         var that = this;
+        
+
+        //跳转选择另一张图片时，清空已标注和未标注框数据，不做预存处理
+        while(that.editingBoxData.length!=0){
+            that.handleDeleteFeature(that.editingBoxData.pop().featureId);
+        }
+        while(that.bndBoxData.length!=0){
+            that.handleDeleteFeature(that.bndBoxData.pop().featureId);
+        }
 
         function loadImg(src){
             return new Promise((resolve,reject)=>{
@@ -653,7 +681,7 @@ var watch = {
             gMapObj.setMode("banMap");
             // 添加边框：矩形边框绘制完成
             gMapObj.events.on('geometryDrawDone', function (type, points) {
-                that.drawRectBox(type, points, gFeatureStyle);
+                that.drawRectBox(type, points, gFeatureStyle,that.imgWidth,that.imgHeight);
             });
 
             /**
@@ -666,17 +694,17 @@ var watch = {
 
             // 编辑模式开始：双击选中编辑矩形框，进入编辑模式
             gMapObj.events.on('featureSelected', function(feature){
-                that.enterEditMode(feature);
+                that.enterEditMode(feature,that.imgWidth,that.imgHeight);
             });
 
             // 编辑模式中：实时变更最右方编辑框中的坐标数据
             gMapObj.events.on('geometryEditing', this.throttle(function (type, feature, points) {
-                that.updateEditMode(type, feature, points);
+                that.updateEditMode(type, feature, points,that.imgWidth,that.imgHeight);
             }, 50));
 
             // 编辑模式结束：进入编辑模式之后，编辑边框完成
             gMapObj.events.on('geometryEditDone', function (type, activeFeature, points) {
-                that.endEditMode(type, activeFeature, points);
+                that.endEditMode(type, activeFeature, points,that.imgWidth,that.imgHeight);
             });
 
             // feature-reset监听
@@ -713,6 +741,7 @@ export default {
 <style scoped>
 #map {
     width: 100%;
+    background-color: bisque;
     height:600px;
     border: 1px solid #aaa;
     position: relative;

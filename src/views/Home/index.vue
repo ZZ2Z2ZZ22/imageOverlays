@@ -27,7 +27,7 @@
       </div>
     </div>
     <div class="middle">
-     <MarkImage :img="picSrc.src" :mode="mode"></MarkImage>
+     <MarkImage :img="picSrc.src" :imgName="picSrc.name" :mode="mode"></MarkImage>
     </div>
   </div>
 </template>

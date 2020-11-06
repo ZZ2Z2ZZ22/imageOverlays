@@ -601,7 +601,7 @@ var methods = {
             cancelButtonText: '取消',
             type: 'warning'
         }).then(() => {
-            axios.post(url, formData,{headers: {'Content-Type':'application/x-www-form-urlencoded'}}).then((response)=>{
+            axios.post(url, formData,{headers: {'Content-Type':'multipart/form-data'}}).then((response)=>{
                 console.log(response);
                 this.$message({
                 type: 'success',
